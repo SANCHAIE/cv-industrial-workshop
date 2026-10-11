@@ -359,6 +359,41 @@ def mode_ai(img, s):
                 stat=label, views=[(img, 'AI ทายว่า ' + label)])
 
 
+# ---------- Workshop 5: สายพานจำลอง ----------
+def conveyor_scene(trays, t_ms, speed, gap=200, fov_w=640):
+    # ถาดวิ่งจากซ้ายไปขวาด้วยความเร็ว speed (พิกเซล/มิลลิวินาที)  คืนภาพสายพานทั้งเส้น และตำแหน่งกลางภาพ (เซนเซอร์)
+    th, tw = trays[0].shape[:2]
+    W = fov_w * 3
+    scene = np.full((th, W, 3), (55, 57, 60), np.uint8)
+    off = int(t_ms * speed) % 80
+    for x in range(off - 80, W, 80):
+        cv2.line(scene, (x, 0), (x, th), (68, 70, 74), 6)
+    pitch = tw + gap
+    travel = t_ms * speed
+    k_hi = int(travel // pitch)
+    for k in range(max(0, k_hi - W // pitch - 2), k_hi + 1):
+        x0 = int(travel - k * pitch) - tw
+        if x0 >= W or x0 + tw <= 0:
+            continue
+        a, b = max(0, x0), min(W, x0 + tw)
+        scene[:, a:b] = trays[k % len(trays)][:, a - x0:b - x0]
+    return scene, W // 2
+
+
+def trigger_time(k, speed, tw, W, gap=200):
+    # เวลาที่ถาดที่ k มีจุดกลางผ่านเซนเซอร์ (กลางสายพาน)
+    return (W // 2 + tw / 2 + k * (tw + gap)) / speed
+
+
+def capture(scene, center, fov_w, blur_px):
+    crop = scene[:, center - fov_w // 2:center + fov_w // 2].copy()
+    L = int(round(blur_px))
+    if L > 1:
+        k = np.full((1, L), 1.0 / L, np.float32)
+        crop = cv2.filter2D(crop, -1, k)
+    return crop
+
+
 MODES = {
     'basics': ('พื้นฐานภาพ (Workshop 1)', mode_basics),
     'color': ('นับตามสี (Workshop 2, 2B, 5)', mode_color),
@@ -368,4 +403,5 @@ MODES = {
     'measure': ('วัดขนาด (Workshop 6)', mode_measure),
     'zones': ('แผนที่โซน ROI (Workshop 8)', mode_zones),
     'ai': ('AI จำแนกภาพ (Workshop 7)', mode_ai),
+    'conveyor': ('สายพานจำลอง (Workshop 5)', mode_color),
 }

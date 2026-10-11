@@ -36,6 +36,8 @@ recipe('W5 จำลองกะการผลิต: แสงน้อย', '
        image='factory/part_001.png', chk_chip=True, chk_foreign=True, sim=True, light=0.2)
 recipe('W5 จำลองกะการผลิต: สายพานเร็ว', 'ภาพเบลอ  ลองลด Exposure แล้วเพิ่ม Gain', 'color', source='ภาพตัวอย่าง',
        image='factory/part_001.png', chk_chip=True, chk_foreign=True, sim=True, speed=2.0, exposure=10.0)
+recipe('W5 สายพานจำลอง: ความเร็ว + Trigger', 'ถาดวิ่งผ่านกล้อง เซนเซอร์สั่งถ่ายเมื่อถาดถึงกลางภาพ  กดเริ่มสายพาน แล้วลองเร่งความเร็ว เพิ่ม Exposure หรือหน่วง Trigger', 'conveyor',
+       source='ภาพตัวอย่าง', image='line/tray_01.png', chk_chip=True, chk_foreign=True)
 recipe('W6 สิ่งแปลกปลอม: เทียบภาพอ้างอิง', 'ภาพอ้างอิง = ถาดดี  ลองถาดที่มีสกรู เส้นผม ชิ้นหาย', 'reference',
        source='ภาพตัวอย่าง', image='industrial/tray_02_screw.png', ref_file='industrial/tray_reference.png')
 recipe('W6 ตรวจฉลากสินค้า', 'ชื่อสินค้าต้องเป็น PRODUCT A  มี LOT และ EXP', 'label', source='ภาพตัวอย่าง',
@@ -63,9 +65,12 @@ DEFAULTS = dict(
     lbl_need_lot=True, lbl_need_exp=True, lbl_min_days=30, lbl_product='', lbl_today=date.today(),
     peak_frac=0.5, hole_min=280, parts_min_area=300, exp_washer=7, exp_nut=5,
     meas_ref_mm=20.0, meas_dark=True, meas_w=25.5, meas_h=16.0, meas_tol=0.5,
-    zones_text=M.RACK_ZONES, ai_ok_labels='ok')
+    zones_text=M.RACK_ZONES, ai_ok_labels='ok', conv_speed=0.5, conv_delay=0, conv_proc=10)
 
 for k, v in DEFAULTS.items():
+    st.session_state.setdefault(k, v)
+for k, v in (('conv_on', False), ('conv_t0', 0.0), ('conv_k', 0), ('conv_busy', -1e9), ('conv_log', []),
+             ('conv_last', None)):
     st.session_state.setdefault(k, v)
 for k, v in (('log', []), ('last', None), ('recipe', list(R)[0]), ('ref_img', None), ('ai_model', None),
              ('ai_X', []), ('ai_y', [])):
@@ -252,6 +257,18 @@ with tab_tune:
         c1.slider('Threshold T', 0, 255, key='th_T'); c1.checkbox('กลับขาวดำ (วัตถุเข้มบนพื้นสว่าง)', key='th_inv')
         c2.slider('Canny low', 0, 255, key='canny_lo'); c2.slider('Canny high', 0, 255, key='canny_hi')
         c2.number_input('พิกเซล x', 0, 5000, key='px_x'); c2.number_input('พิกเซล y', 0, 5000, key='px_y')
+    elif mode == 'conveyor':
+        with c1:
+            st.slider('ความเร็วสายพาน (พิกเซล/มิลลิวินาที)', 0.1, 3.0, key='conv_speed', step=0.1,
+                      help='ภาพเบลอ = ความเร็ว × Exposure  (ปรับ Exposure ที่แถบซ้าย ข้อ 3)')
+            st.slider('หน่วง Trigger (มิลลิวินาที)', -150, 150, key='conv_delay', step=5,
+                      help='เซนเซอร์ติดผิดตำแหน่ง หรือสัญญาณช้า ถาดจะไม่อยู่กลางภาพ')
+            st.slider('เวลาประมวลผลต่อถาด (มิลลิวินาที)', 1, 1500, key='conv_proc', step=10,
+                      help='ถ้าถาดถัดไปมาถึงก่อนประมวลผลเสร็จ = ตรวจไม่ทัน (พลาด)')
+        with c2:
+            st.slider('ช่วงสี H (Hue)', 0, 179, key='h_range')
+            st.number_input('จำนวนที่ต้องมี', 0, 100, key='expect')
+            st.checkbox('NG ถ้ามีเศษชิ้นแตก', key='chk_chip'); st.checkbox('NG ถ้ามีสิ่งแปลกปลอมสีส้ม', key='chk_foreign')
     elif mode == 'color':
         with c1:
             st.slider('ช่วงสี H (Hue)', 0, 179, key='h_range', help='แดง 0–10  ส้ม 12–22  เหลือง 22–35  เขียว 40–80  น้ำเงิน 95–125')
@@ -365,8 +382,85 @@ def live_view():
         st.warning('ภาพนี้ไม่สำเร็จ: ' + str(e)[:150])
 
 
+@st.cache_data
+def conveyor_trays():
+    names = sorted(f for f in os.listdir(img_path('line')) if f.endswith('.png'))
+    return names, [cv2.imread(img_path('line/' + f)) for f in names]
+
+
+@st.fragment(run_every=0.3 if st.session_state.get('conv_on') else None)
+def conveyor_view():
+    names, trays = conveyor_trays()
+    sp = st.session_state.conv_speed
+    exp = st.session_state.exposure
+    th, tw = trays[0].shape[:2]
+    W = 640 * 3
+    pitch = tw + 200
+    now = (time.time() - st.session_state.conv_t0) * 1000 if st.session_state.conv_on else 0
+    s = settings()
+    done = 0
+    while st.session_state.conv_on and done < 5:
+        k = st.session_state.conv_k
+        t_k = M.trigger_time(k, sp, tw, W) + st.session_state.conv_delay
+        if t_k > now:
+            break
+        name = names[k % len(names)]
+        truth = M.mode_color(trays[k % len(trays)], s)['verdict']
+        row = {'ถาดที่': k + 1, 'ภาพ': name, 'เฉลย': truth}
+        if t_k < st.session_state.conv_busy:
+            row.update({'ผลตรวจ': 'พลาด', 'สาเหตุ': 'ตรวจไม่ทัน (กำลังประมวลผลถาดก่อน)'})
+        else:
+            scene, c = M.conveyor_scene(trays, t_k, sp)
+            img = M.capture(scene, c, 640, sp * exp)
+            if st.session_state.sim:
+                img = simulate_real(img, exp, st.session_state.gain, st.session_state.light, 0)
+            res = M.mode_color(img, s)
+            st.session_state.conv_busy = t_k + st.session_state.conv_proc
+            st.session_state.conv_last = (img, res)
+            row.update({'ผลตรวจ': res['verdict'], 'สาเหตุ': res['reason']})
+        row['ถูกต้อง'] = 'ใช่' if row['ผลตรวจ'] == truth else 'ไม่'
+        st.session_state.conv_log.append(row)
+        st.session_state.conv_k += 1
+        done += 1
+    scene, c = M.conveyor_scene(trays, now, sp)
+    view = scene.copy()
+    cv2.rectangle(view, (c - 320, 2), (c + 320, th - 3), (0, 220, 255), 4)
+    cv2.line(view, (c, 0), (c, th), (0, 0, 255), 3)
+    st.image(small(view, 1400), caption='สายพาน  กรอบเหลือง = ภาพที่กล้องเห็น  เส้นแดง = เซนเซอร์สั่ง Trigger', width='stretch')
+    log = st.session_state.conv_log
+    per_min = sp * 60000 / pitch
+    m = st.columns(5)
+    m[0].metric('ถาด/นาที', f'{per_min:.0f}')
+    m[1].metric('ภาพเบลอ (พิกเซล)', f'{sp * exp:.1f}')
+    m[2].metric('ตรวจแล้ว', len(log))
+    m[3].metric('ตัดสินถูก', sum(r['ถูกต้อง'] == 'ใช่' for r in log))
+    m[4].metric('พลาด / ผิด', sum(r['ถูกต้อง'] == 'ไม่' for r in log))
+    if st.session_state.conv_last is not None:
+        img, res = st.session_state.conv_last
+        badge_slot.markdown(badge(res['verdict'], res['reason']), unsafe_allow_html=True)
+        stat_slot.metric('ผล', res['stat'])
+        a, b = st.columns([1.3, 1])
+        a.image(small(res['views'][0][0], 800), caption='ภาพล่าสุดที่กล้องถ่าย', width='stretch')
+        if log:
+            b.dataframe(pd.DataFrame(log).iloc[::-1].head(8), width='stretch', hide_index=True)
+
+
+def conveyor_toggle():
+    if st.session_state.conv_on:
+        st.session_state.conv_on = False
+    else:
+        st.session_state.conv_on = True
+        st.session_state.conv_t0 = time.time()
+        st.session_state.conv_k, st.session_state.conv_busy = 0, -1e9
+        st.session_state.conv_log, st.session_state.conv_last = [], None
+
+
 with tab_view:
-    if live:
+    if mode == 'conveyor':
+        st.button('⏹ หยุดสายพาน' if st.session_state.conv_on else '▶ เริ่มสายพาน', on_click=conveyor_toggle,
+                  type='primary', width='stretch')
+        conveyor_view()
+    elif live:
         live_view()
         if new_shot:
             r = render(st.session_state.last, logging=True); st.toast('บันทึกผล: ' + r['verdict'] + '  ' + r['reason'])
