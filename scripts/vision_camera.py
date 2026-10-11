@@ -359,3 +359,42 @@ def simulate_real(img, exposure_ms=5.0, gain_db=0.0, light=1.0, speed=0.0, seed=
         x = cv2.filter2D(x, -1, k)
     x += rng.normal(0, 1.5 + 2.5 * g, x.shape)      # จุดรบกวน ขยายตาม Gain
     return np.clip(x, 0, 255).astype(np.uint8)
+
+
+class SimpleHOG:
+    # HOG แบบเขียนเอง ใช้แทน cv2.HOGDescriptor ที่ไม่มีใน OpenCV 5  (ภาพ 64x48, cell 8, block 2x2, 9 ทิศ)
+    def __init__(self, cell=8, bins=9):
+        self.cell, self.bins = cell, bins
+
+    def compute(self, gray):
+        g = gray.astype(np.float32)
+        gx = cv2.Sobel(g, cv2.CV_32F, 1, 0, ksize=1)
+        gy = cv2.Sobel(g, cv2.CV_32F, 0, 1, ksize=1)
+        mag = np.sqrt(gx * gx + gy * gy)
+        pos = ((np.degrees(np.arctan2(gy, gx)) + 180.0) % 180.0) / (180.0 / self.bins) - 0.5
+        lo = np.floor(pos).astype(int)
+        w_hi = pos - lo
+        lo_b, hi_b = lo % self.bins, (lo + 1) % self.bins
+        c = self.cell
+        ch, cw = g.shape[0] // c, g.shape[1] // c
+        hist = np.zeros((ch, cw, self.bins), np.float32)
+        for i in range(ch):
+            for j in range(cw):
+                sl = (slice(i * c, (i + 1) * c), slice(j * c, (j + 1) * c))
+                m = mag[sl].ravel(); w = w_hi[sl].ravel()
+                hist[i, j] = (np.bincount(lo_b[sl].ravel(), m * (1 - w), self.bins) +
+                              np.bincount(hi_b[sl].ravel(), m * w, self.bins))
+        blocks = []
+        for i in range(ch - 1):
+            for j in range(cw - 1):
+                b = hist[i:i + 2, j:j + 2].ravel()
+                b = np.minimum(b / (np.linalg.norm(b) + 1e-6), 0.2)
+                blocks.append(b / (np.linalg.norm(b) + 1e-6))
+        return np.concatenate(blocks)
+
+
+def make_hog():
+    # OpenCV 4 มี cv2.HOGDescriptor  OpenCV 5 ไม่มี จึงใช้ SimpleHOG แทน
+    if hasattr(cv2, 'HOGDescriptor'):
+        return cv2.HOGDescriptor((64, 48), (16, 16), (8, 8), (8, 8), 9)
+    return SimpleHOG()
