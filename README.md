@@ -23,10 +23,12 @@ cv-industrial-workshop/
 │   ├── 07_ai_classifier.ipynb      ต่อยอดสู่ AI: สอน Image Classifier เทียบกับการเขียนกฎ
 │   ├── 08_product_components.ipynb แยกส่วนประกอบในภาพเดียว (Rack server): ROI map, หาอัตโนมัติ, AI detection
 │   ├── 09_challenges.ipynb         Challenge 8 ข้อ: แก้โค้ดเองให้ผ่านตัวตรวจอัตโนมัติ (มีเฉลย)
-│   └── 10_my_first_project.ipynb   โครงการแรกของฉัน: ใช้รูปจากมือถือ ตรวจชิ้นงานของโรงงานตัวเอง
+│   ├── 10_my_first_project.ipynb   โครงการแรกของฉัน: ใช้รูปจากมือถือ ตรวจชิ้นงานของโรงงานตัวเอง
+│   └── 11_measurement.ipynb        วัดขนาดอย่างละเอียด: สอบเทียบ แก้กล้องเอียง Sub-pixel Repeatability
 ├── app/inspection_app.py         ← Web app สถานีตรวจชิ้นงาน (Streamlit)
 ├── docs/AI_HELP.md               ← วิธีใช้ AI ช่วยเขียนโค้ดต่อยอด (ตัวอย่างคำถาม)
 ├── docs/GLOSSARY.md              ← คำย่อและคำศัพท์ที่ควรรู้ (★ = อยู่ในแบบทดสอบ)
+├── docs/MEASUREMENT.md           ← วัดขนาดวัตถุจากภาพอย่างละเอียด (คู่มือย่อ)
 ├── docs/SCHEDULE_V2.md           ← ตารางอบรมแบบ 2 เส้นทาง + แบบสำรวจก่อนอบรม
 ├── docs/REAL_CAMERA_AND_WEBAPP.md ← ต่อกล้องจริง ข้อจำกัด และรัน Web app บน localhost
 ├── scripts/                      ← โปรแกรมภาพสด (live view) สำหรับกล้องจริง
