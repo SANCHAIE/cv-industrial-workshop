@@ -1,0 +1,23 @@
+[project]
+name = "cv-industrial-workshop"
+version = "2.0"
+description = "Computer Vision for Industry workshop (Basler + Python + OpenCV)"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "opencv-python==4.13.0.92",
+    "numpy==2.4.4",
+    "scipy==1.17.1",
+    "scikit-learn==1.8.0",
+    "pypylon==26.8",
+    "pytesseract==0.3.13",
+    "matplotlib==3.10.8",
+    "pandas==3.0.2",
+    "streamlit==1.65.0",
+    "ipykernel==7.4.0",
+    "ipywidgets==8.1.9",
+    "jupyterlab>=4.4,<5",
+    "certifi",
+]
+
+[tool.uv]
+package = false

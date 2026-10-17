@@ -4,3 +4,5 @@ inspection_log.csv
 ng_images/
 *.pyc
 .DS_Store
+captures/
+.venv/

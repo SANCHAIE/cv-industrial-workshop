@@ -12,6 +12,7 @@
 ```
 cv-industrial-workshop/
 ├── notebooks/                    ← ผู้เรียนใช้ไฟล์ในโฟลเดอร์นี้
+│   ├── 00_python_basics.ipynb      Python เท่าที่ต้องใช้ (60 นาที สำหรับคนไม่เคยเขียนโปรแกรม)
 │   ├── 01_image_basics.ipynb       Workshop 1: ภาพคืออะไร (พิกเซล RGB HSV Threshold Canny)
 │   ├── 02_object_counting.ipynb    Workshop 2: นับวัตถุตามสี + กล้อง Basler จำลอง
 │   ├── 02b_emulator_play.ipynb     เล่นกับกล้องจำลอง: AOI, Pixel Format, สายการผลิต, จำลองกล้องจริง
@@ -26,6 +27,7 @@ cv-industrial-workshop/
 ├── app/inspection_app.py         ← Web app สถานีตรวจชิ้นงาน (Streamlit)
 ├── docs/AI_HELP.md               ← วิธีใช้ AI ช่วยเขียนโค้ดต่อยอด (ตัวอย่างคำถาม)
 ├── docs/GLOSSARY.md              ← คำย่อและคำศัพท์ที่ควรรู้ (★ = อยู่ในแบบทดสอบ)
+├── docs/SCHEDULE_V2.md           ← ตารางอบรมแบบ 2 เส้นทาง + แบบสำรวจก่อนอบรม
 ├── docs/REAL_CAMERA_AND_WEBAPP.md ← ต่อกล้องจริง ข้อจำกัด และรัน Web app บน localhost
 ├── scripts/                      ← โปรแกรมภาพสด (live view) สำหรับกล้องจริง
 │   ├── vision_camera.py            ต่อกล้อง / แสดงภาพ (ทุก Workshop ใช้ร่วมกัน)
@@ -41,20 +43,31 @@ cv-industrial-workshop/
 │   ├── industrial/                 ภาพถาด ฉลาก ชิ้นส่วนโลหะ สำหรับ notebook 06
 │   ├── rack/                       ภาพหน้าตู้ Rack server สำหรับ notebook 08
 │   └── factory_labels.csv          เฉลยของแต่ละถาด
+├── start_windows.bat / start_mac.command  ติดตั้งและเปิดใช้งานคลิกเดียว
+├── check_setup.py                ตรวจความพร้อมของเครื่อง
+├── pyproject.toml                รายการไลบรารีที่ล็อกรุ่นแล้ว
 └── requirements.txt
 ```
 
 ---
 
-## 1. ติดตั้งโปรแกรม (ทำครั้งเดียว ก่อนวันอบรม)
+## 1. ติดตั้ง (วิธีใหม่: คลิกเดียว)
 
-ใช้เวลาประมาณ 20–30 นาที ต้องต่ออินเทอร์เน็ต ทำตามทีละขั้น ทุกขั้นมี **"ตรวจสอบ"** ให้เช็กว่าทำสำเร็จก่อนไปขั้นถัดไป
+1. ดาวน์โหลด ZIP จาก GitHub (ปุ่ม Code → Download ZIP) แล้วแตกไฟล์ไว้ที่ Desktop
+2. **Windows:** ดับเบิลคลิก `start_windows.bat`   **Mac:** ดับเบิลคลิก `start_mac.command` (ครั้งแรก Mac อาจถามให้คลิกขวา → Open)
+3. โปรแกรมจะติดตั้ง Python 3.12 และไลบรารีทุกตัวให้เอง (ครั้งแรก 2–5 นาที)  แล้วถามว่าจะทำอะไร
+   - `1` ตรวจความพร้อม (ต้องผ่านอย่างน้อย 9 รายการแรก)
+   - `2` เปิด Notebook (เปิดในเบราว์เซอร์ ไม่ต้องใช้ VS Code)
+   - `3` เปิด Web app
+4. Tesseract (ใช้วันที่ 2 อ่านตัวอักษร) ติดตั้งแยก: Windows จาก github.com/UB-Mannheim/tesseract/wiki  Mac `brew install tesseract`
 
-- [Windows](#windows)
-- [Mac](#mac)
-- [ติดตั้งไม่ผ่าน ดูตรงนี้](#5-ปัญหาที่พบบ่อย)
+วิธีนี้ไม่ยุ่งกับ Python ที่มีอยู่ในเครื่อง ตัดปัญหา “หา python ไม่เจอ” และ Kernel ไม่ตรง  ถ้าอยากใช้ VS Code ก็เปิดโฟลเดอร์นี้ VS Code จะเห็น `.venv` ที่สร้างให้เอง
+
+ยังไม่เคยเขียนโปรแกรม: เริ่มที่ `notebooks/00_python_basics.ipynb` (60 นาที) ก่อน Workshop 1
 
 ---
+
+## 1b. ติดตั้งแบบเดิม (ถ้าคลิกเดียวไม่ได้)
 
 ### Windows
 
